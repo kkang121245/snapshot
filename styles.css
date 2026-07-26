@@ -1,0 +1,67 @@
+.ggai-snap-mode .ggai-chat-msg {
+  cursor: pointer;
+  transition: background-color 120ms ease, outline-color 120ms ease;
+}
+
+.ggai-snap-mode .ggai-chat-msg:hover {
+  outline: 2px dashed var(--interactive-accent);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.ggai-snap-endpoint {
+  outline: 2px solid var(--interactive-accent) !important;
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.ggai-snap-in-range {
+  background-color: rgba(var(--interactive-accent-rgb), 0.12);
+  border-radius: 8px;
+}
+
+.ggai-snap-toolbar {
+  position: fixed;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  width: 90%;
+  max-width: 300px;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-l, 0 4px 16px rgba(0, 0, 0, 0.3));
+}
+
+.ggai-snap-toolbar .ggai-snap-status {
+  width: 100%;
+  text-align: center;
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+.ggai-snap-toolbar button {
+  white-space: nowrap;
+}
+
+.ggai-snap-modal-field {
+  margin-bottom: 6px;
+}
+
+.ggai-snap-modal-hint {
+  font-size: 0.8em;
+  color: var(--text-muted);
+  margin-top: -4px;
+  margin-bottom: 12px;
+}
