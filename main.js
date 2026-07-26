@@ -1318,9 +1318,15 @@ var ChatCaptureSession = class {
       if (bubbleEl) {
         bubbleEl.removeAttribute("contenteditable");
         bubbleEl.style.maxWidth = "100%";
+        bubbleEl.style.minWidth = "0";
         bubbleEl.style.boxSizing = "border-box";
-        bubbleEl.style.overflowWrap = "break-word";
-        bubbleEl.style.wordBreak = "break-word";
+        
+        const wrapTargets = [bubbleEl, ...bubbleEl.querySelectorAll("*")];
+        for (const el of wrapTargets) {
+          el.style.setProperty("word-break", "normal", "important");
+          el.style.setProperty("overflow-wrap", "normal", "important");
+          el.style.setProperty("min-width", "0", "important");
+        }
       }
     }
     if (this.settings.nameMode === "replace" && this.settings.nameReplacements) {
