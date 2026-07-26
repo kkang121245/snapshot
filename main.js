@@ -1284,12 +1284,13 @@ var ChatCaptureSession = class {
     clone.style.height = "auto";
     clone.style.maxHeight = "none";
     clone.style.overflow = "visible";
-    clone.style.padding = "0";
+  clone.style.padding = "6px"; 
     clone.style.margin = "0";
     return clone;
   }
   async applyMessageStyling(clone) {
     const msgEls = Array.from(clone.querySelectorAll(MSG_SELECTOR));
+
     for (const msgEl of msgEls) {
       msgEl.classList.remove("ggai-snap-endpoint", "ggai-snap-in-range");
       msgEl.style.outline = "none";
@@ -1320,15 +1321,9 @@ var ChatCaptureSession = class {
         bubbleEl.style.maxWidth = "100%";
         bubbleEl.style.minWidth = "0";
         bubbleEl.style.boxSizing = "border-box";
-        
-        const wrapTargets = [bubbleEl, ...bubbleEl.querySelectorAll("*")];
-        for (const el of wrapTargets) {
-          el.style.setProperty("word-break", "normal", "important");
-          el.style.setProperty("overflow-wrap", "normal", "important");
-          el.style.setProperty("min-width", "0", "important");
-        }
       }
     }
+
     if (this.settings.nameMode === "replace" && this.settings.nameReplacements) {
       const entries = Object.entries(this.settings.nameReplacements).filter(
         ([, value]) => value && value.trim()
@@ -1337,6 +1332,18 @@ var ChatCaptureSession = class {
         for (const msgEl of msgEls) {
           const bubbleEl = msgEl.querySelector(".ggai-chat-bubble");
           if (bubbleEl) this.replaceNamesInBubble(bubbleEl, entries);
+        }
+      }
+    }
+
+    for (const msgEl of msgEls) {
+      const bubbleEl = msgEl.querySelector(".ggai-chat-bubble");
+      if (!bubbleEl) continue;
+      const paras = bubbleEl.querySelectorAll("p.ggai-chat-para");
+      for (const p of paras) {
+        const w = p.getBoundingClientRect().width;
+        if (w > 0) {
+          p.style.width = `${Math.ceil(w)}px`;
         }
       }
     }
