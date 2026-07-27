@@ -28,10 +28,12 @@ function getStellaEngine(app) {
 
 var import_obsidian = require("obsidian");
 var CaptureOptionsModal = class extends import_obsidian.Modal {
-  constructor(app, initial, onSubmit) {
+  constructor(app, initial, onSubmit, submitLabel = "구간 선택", onCancel) {
     super(app);
     this.settings = {...initial};
     this.onSubmit = onSubmit;
+    this.submitLabel = submitLabel;
+    this.onCancel = onCancel;
   }
   onOpen() {
     const {contentEl} = this;
@@ -95,8 +97,8 @@ var CaptureOptionsModal = class extends import_obsidian.Modal {
       .setDesc("선택한 범위가 이 개수보다 길면 여러 장의 이미지로 나눠 저장합니다.")
       .addSlider((slider) => {
         slider
-          .setLimits(5, 50, 5)
-          .setValue(this.settings.maxMessagesPerCapture || 20)
+          .setLimits(2, 30, 2)
+          .setValue(this.settings.maxMessagesPerCapture || 10)
           .setDynamicTooltip()
           .onChange((value) => {
             this.settings.maxMessagesPerCapture = value;
@@ -104,11 +106,14 @@ var CaptureOptionsModal = class extends import_obsidian.Modal {
       });
     new import_obsidian.Setting(contentEl)
       .addButton((btn) => {
-        btn.setButtonText("취소").onClick(() => this.close());
+        btn.setButtonText("취소").onClick(() => {
+          this.close();
+          if (this.onCancel) this.onCancel();
+        });
       })
       .addButton((btn) => {
         btn
-          .setButtonText("구간 선택")
+          .setButtonText(this.submitLabel)
           .setCta()
           .onClick(() => {
             this.onSubmit(this.settings);
@@ -1024,12 +1029,19 @@ function resolveColorFunctions(input) {
 
 var import_obsidian2 = require("obsidian");
 var NameMappingModal = class extends import_obsidian2.Modal {
-  constructor(app, names, existingMap, onSubmit, onLiveChange) {
+  constructor(app, names, existingMap, onSubmit, onLiveChange, onCancel) {
     super(app);
     this.names = names;
-    this.map = {...existingMap};
     this.onSubmit = onSubmit;
     this.onLiveChange = onLiveChange;
+    this.onCancel = onCancel;
+    this.namesMap = {};
+    for (const name of names) {
+      this.namesMap[name] = (existingMap && existingMap[name]) || "";
+    }
+    this.customEntries = Object.entries(existingMap || {})
+      .filter(([key]) => !names.includes(key))
+      .map(([key, value]) => ({key, value: value || ""}));
   }
   onOpen() {
     const {contentEl} = this;
@@ -1041,27 +1053,88 @@ var NameMappingModal = class extends import_obsidian2.Modal {
     });
     for (const name of this.names) {
       const setting = new import_obsidian2.Setting(contentEl).setName(name).addText((text) => {
-        text.setPlaceholder(name).setValue(this.map[name] || "");
+        text.setPlaceholder(name).setValue(this.namesMap[name] || "");
         text.onChange((value) => {
-          this.map[name] = value;
-          if (this.onLiveChange) this.onLiveChange({...this.map});
+          this.namesMap[name] = value;
+          this.notifyLiveChange();
         });
       });
       setting.settingEl.addClass("ggai-snap-modal-field");
     }
+
+    contentEl.createEl("p", {
+      text: "그 외 추가로 바꾸고 싶은 텍스트가 있다면 아래에 추가하세요.",
+      cls: "ggai-snap-modal-hint",
+    });
+    this.customListEl = contentEl.createDiv({cls: "ggai-snap-modal-custom-list"});
+    for (const entry of this.customEntries) {
+      this.renderCustomRow(entry);
+    }
+
+    new import_obsidian2.Setting(contentEl).addButton((btn) => {
+      btn.setButtonText("+ 텍스트 추가").onClick(() => {
+        const entry = {key: "", value: ""};
+        this.customEntries.push(entry);
+        this.renderCustomRow(entry);
+      });
+    });
+
     new import_obsidian2.Setting(contentEl)
       .addButton((btn) => {
-        btn.setButtonText("취소").onClick(() => this.close());
+        btn.setButtonText("취소").onClick(() => {
+          this.close();
+          if (this.onCancel) this.onCancel();
+        });
       })
       .addButton((btn) => {
         btn
           .setButtonText("캡쳐")
           .setCta()
           .onClick(() => {
-            this.onSubmit(this.map);
+            this.onSubmit(this.buildFinalMap());
             this.close();
           });
       });
+  }
+  renderCustomRow(entry) {
+    const row = new import_obsidian2.Setting(this.customListEl);
+    row.settingEl.addClass("ggai-snap-modal-field");
+    row.addText((text) => {
+      text.setPlaceholder("찾을 텍스트").setValue(entry.key);
+      text.onChange((value) => {
+        entry.key = value;
+        this.notifyLiveChange();
+      });
+    });
+    row.addText((text) => {
+      text.setPlaceholder("바꿀 텍스트").setValue(entry.value);
+      text.onChange((value) => {
+        entry.value = value;
+        this.notifyLiveChange();
+      });
+    });
+    row.addExtraButton((btn) => {
+      btn
+        .setIcon("cross")
+        .setTooltip("삭제")
+        .onClick(() => {
+          this.customEntries = this.customEntries.filter((e) => e !== entry);
+          row.settingEl.remove();
+          this.notifyLiveChange();
+        });
+    });
+  }
+  buildFinalMap() {
+    const map = {...this.namesMap};
+    for (const entry of this.customEntries) {
+      const key = entry.key.trim();
+      if (!key) continue;
+      map[key] = entry.value;
+    }
+    return map;
+  }
+  notifyLiveChange() {
+    if (this.onLiveChange) this.onLiveChange(this.buildFinalMap());
   }
   onClose() {
     this.contentEl.empty();
@@ -1170,6 +1243,74 @@ async function saveImageToVault(app, sessionFile, blob, extension = "png", ts, s
   await app.vault.createBinary(fullPath, buf);
   return fullPath;
 }
+var CapturePreviewModal = class extends import_obsidian3.Modal {
+  constructor(app, images, options) {
+    super(app);
+    this.images = images;
+    this.options = options;
+  }
+  onOpen() {
+    const {contentEl} = this;
+    contentEl.empty();
+    contentEl.createEl("h3", {text: "캡쳐 미리보기"});
+    contentEl.createEl("p", {
+      text: this.images.length > 1 ? `캡쳐본이 ${this.images.length}장으로 나눠 저장됩니다. 확인 후 저장하세요.` : "이 이미지로 저장할까요?",
+      cls: "ggai-snap-modal-hint",
+    });
+    const gallery = contentEl.createDiv({cls: "ggai-snap-preview-gallery"});
+    gallery.style.maxHeight = "60vh";
+    gallery.style.overflowY = "auto";
+    for (const image of this.images) {
+      const img = gallery.createEl("img");
+      img.src = image.url;
+      img.style.display = "block";
+      img.style.maxWidth = "100%";
+      img.style.marginBottom = "8px";
+      img.style.borderRadius = "4px";
+    }
+    const actionRow = new import_obsidian3.Setting(contentEl);
+    actionRow.addButton((btn) => {
+      btn.setButtonText("다시 선택").onClick(() => {
+        this.close();
+        this.options.onReselect();
+      });
+    });
+    actionRow.addButton((btn) => {
+      btn.setButtonText("옵션 재설정").onClick(() => {
+        this.close();
+        this.options.onResetOptions();
+      });
+    });
+    if (this.options.showNameReplacementsReset) {
+      actionRow.addButton((btn) => {
+        btn.setButtonText("대체 텍스트 재설정").onClick(() => {
+          this.close();
+          this.options.onResetNameReplacements();
+        });
+      });
+    }
+    const confirmRow = new import_obsidian3.Setting(contentEl);
+    confirmRow.addButton((btn) => {
+      btn.setButtonText("취소").onClick(() => {
+        this.close();
+        this.options.onCancel();
+      });
+    });
+    confirmRow.addButton((btn) => {
+      btn
+        .setButtonText("저장")
+        .setCta()
+        .onClick(() => {
+          this.close();
+          this.options.onSave();
+        });
+    });
+  }
+  onClose() {
+    this.contentEl.empty();
+    if (this.options.onClose) this.options.onClose();
+  }
+};
 var ChatCaptureSession = class {
   constructor(app, sessionFile, settings, leaf, onSettingsChange) {
     this.container = null;
@@ -1202,6 +1343,12 @@ var ChatCaptureSession = class {
     this.buildToolbar();
     this.updateStatus();
     return true;
+  }
+  hideToolbar() {
+    if (this.toolbarEl) this.toolbarEl.style.display = "none";
+  }
+  showToolbar() {
+    if (this.toolbarEl) this.toolbarEl.style.display = "";
   }
   buildToolbar() {
     const bar = document.body.createDiv({cls: "ggai-snap-toolbar"});
@@ -1279,25 +1426,43 @@ var ChatCaptureSession = class {
     if (!range) return;
     if (this.settings.nameMode === "replace") {
       const names = this.getNamesInRange(range);
-      if (names.length > 0) {
-        new NameMappingModal(
-          this.app,
-          names,
-          this.settings.nameReplacements || {},
-          async (map) => {
-            this.settings.nameReplacements = {...(this.settings.nameReplacements || {}), ...map};
-            if (this.onSettingsChange) await this.onSettingsChange(this.settings);
-            void this.capture();
-          },
-          (liveMap) => {
-            this.settings.nameReplacements = {...(this.settings.nameReplacements || {}), ...liveMap};
-            if (this.onSettingsChange) void this.onSettingsChange(this.settings);
-          },
-        ).open();
+      const existing = this.getNameReplacements();
+      const hasUnmappedName = names.some((name) => !(name in existing));
+      if (hasUnmappedName) {
+        this.openNameMapping(names);
         return;
       }
     }
-    void this.capture();
+    void this.showPreview();
+  }
+  getNameReplacements() {
+    var _a;
+    return ((_a = this.settings.nameReplacementsBySession) == null ? void 0 : _a[this.sessionFile]) || {};
+  }
+  setNameReplacements(map) {
+    if (!this.settings.nameReplacementsBySession) this.settings.nameReplacementsBySession = {};
+    this.settings.nameReplacementsBySession[this.sessionFile] = {...map};
+  }
+  openNameMapping(names, onCancel) {
+    new NameMappingModal(
+      this.app,
+      names,
+      this.getNameReplacements(),
+      async (map) => {
+        this.setNameReplacements(map);
+        if (this.onSettingsChange) await this.onSettingsChange(this.settings);
+        if (this.baselineClones && this.baselineClones.length > 0) {
+          void this.reEncodePreview();
+        } else {
+          void this.showPreview();
+        }
+      },
+      (liveMap) => {
+        this.setNameReplacements(liveMap);
+        if (this.onSettingsChange) void this.onSettingsChange(this.settings);
+      },
+      onCancel,
+    ).open();
   }
   applyHighlight() {
     const msgEls = this.getOrderedMessageEls();
@@ -1359,6 +1524,7 @@ var ChatCaptureSession = class {
   async applyMessageStyling(clone, onProgress) {
     const msgEls = Array.from(clone.querySelectorAll(MSG_SELECTOR));
     const total = msgEls.length;
+    const nameReplacements = this.getNameReplacements();
 
     for (const msgEl of msgEls) {
       msgEl.classList.remove("ggai-snap-endpoint", "ggai-snap-in-range");
@@ -1370,7 +1536,7 @@ var ChatCaptureSession = class {
           nameEl.remove();
         } else if (this.settings.nameMode === "replace") {
           const original = nameEl.textContent.trim();
-          const replacement = this.settings.nameReplacements ? this.settings.nameReplacements[original] : void 0;
+          const replacement = nameReplacements[original];
           if (replacement && replacement.trim()) nameEl.setText(replacement);
         }
       }
@@ -1393,8 +1559,8 @@ var ChatCaptureSession = class {
       }
     }
 
-    if (this.settings.nameMode === "replace" && this.settings.nameReplacements) {
-      const entries = Object.entries(this.settings.nameReplacements).filter(([, value]) => value && value.trim());
+    if (this.settings.nameMode === "replace") {
+      const entries = Object.entries(nameReplacements).filter(([, value]) => value && value.trim());
       if (entries.length > 0) {
         for (const msgEl of msgEls) {
           const bubbleEl = msgEl.querySelector(".ggai-chat-bubble");
@@ -1456,44 +1622,68 @@ var ChatCaptureSession = class {
       img.style.objectFit = "cover";
     }
   }
-  async capture() {
+  async showPreview() {
     if (!this.container || this.capturing) return;
     const range = this.getSelectedRange();
     if (!range) return;
     this.capturing = true;
     if (this.captureBtn) this.captureBtn.disabled = true;
-    if (this.statusEl) this.statusEl.setText("캡쳐 중...");
+    if (this.statusEl) this.statusEl.setText("미리보기 생성 중...");
+    try {
+      await this.buildBaseline(range);
+      await this.reEncodePreview();
+    } catch (err) {
+      new import_obsidian3.Notice(`미리보기 생성에 실패했습니다: ${err.message}`);
+      this.capturing = false;
+      if (this.captureBtn) this.captureBtn.disabled = false;
+      if (this.statusEl) this.statusEl.setText("준비 완료");
+    }
+  }
+  async buildBaseline(range) {
+    const allChildren = Array.from(this.container.children);
+    const startEl = range.msgEls[range.lo];
+    const endEl = range.msgEls[range.hi];
+    const startPos = allChildren.indexOf(startEl);
+    const endPos = allChildren.indexOf(endEl);
+    const rangeEls = allChildren.slice(startPos, endPos + 1).filter((el) => el.classList.contains("ggai-chat-msg") || el.classList.contains("ggai-chat-date-divider"));
+    for (const el of this.getOrderedMessageEls()) {
+      el.style.transition = "none";
+      el.classList.remove("ggai-snap-endpoint", "ggai-snap-in-range");
+      void el.offsetHeight;
+    }
+    const maxMessages = this.settings.maxMessagesPerCapture > 0 ? this.settings.maxMessagesPerCapture : 20;
+    const chunks = splitRangeEls(rangeEls, maxMessages);
+    for (const el of this.getOrderedMessageEls()) {
+      el.style.transition = "";
+    }
+
+    this.baselineClones = [];
+    for (let c = 0; c < chunks.length; c += 1) {
+      const chunkEls = chunks[c];
+      const label = chunks.length > 1 ? `이미지 ${c + 1}/${chunks.length} ` : "";
+      const clone = await this.buildMobileClone(chunkEls, (done, total) => {
+        if (this.statusEl) this.statusEl.setText(`${label}복제 중... (${done}/${total})`);
+      });
+      this.baselineClones.push(clone);
+    }
+    this.applyHighlight();
+  }
+  async reEncodePreview() {
+    if (!this.baselineClones || this.baselineClones.length === 0) return;
+    this.capturing = true;
+    this.showToolbar();
+    if (this.captureBtn) this.captureBtn.disabled = true;
+    if (this.statusEl) this.statusEl.setText("로딩 중...");
     const activeWrappers = [];
     try {
-      const allChildren = Array.from(this.container.children);
-      const startEl = range.msgEls[range.lo];
-      const endEl = range.msgEls[range.hi];
-      const startPos = allChildren.indexOf(startEl);
-      const endPos = allChildren.indexOf(endEl);
-      const rangeEls = allChildren.slice(startPos, endPos + 1).filter((el) => el.classList.contains("ggai-chat-msg") || el.classList.contains("ggai-chat-date-divider"));
-      for (const el of this.getOrderedMessageEls()) {
-        el.style.transition = "none";
-        el.classList.remove("ggai-snap-endpoint", "ggai-snap-in-range");
-        void el.offsetHeight;
-      }
-      const maxMessages = this.settings.maxMessagesPerCapture > 0 ? this.settings.maxMessagesPerCapture : 20;
-      const chunks = splitRangeEls(rangeEls, maxMessages);
-      for (const el of this.getOrderedMessageEls()) {
-        el.style.transition = "";
-      }
-      this.applyHighlight();
-
       const bg = getComputedStyle(document.body).getPropertyValue("--background-primary").trim() || "#ffffff";
       const format = this.settings.imageFormat === "jpg" ? "jpg" : "png";
-      const ts = timestamp();
-      const savedPaths = [];
+      const images = [];
+      const total = this.baselineClones.length;
 
-      for (let c = 0; c < chunks.length; c += 1) {
-        const chunkEls = chunks[c];
-        const label = chunks.length > 1 ? `이미지 ${c + 1}/${chunks.length} ` : "";
-        const clone = await this.buildMobileClone(chunkEls, (done, total) => {
-          if (this.statusEl) this.statusEl.setText(`${label}복제 중... (${done}/${total})`);
-        });
+      for (let c = 0; c < total; c += 1) {
+        const label = total > 1 ? `이미지 ${c + 1}/${total} ` : "";
+        const clone = this.baselineClones[c].cloneNode(true);
         const wrapper = document.body.createDiv();
         wrapper.style.position = "fixed";
         wrapper.style.top = "0";
@@ -1501,8 +1691,8 @@ var ChatCaptureSession = class {
         wrapper.style.pointerEvents = "none";
         wrapper.appendChild(clone);
         activeWrappers.push(wrapper);
-        await this.applyMessageStyling(clone, (done, total) => {
-          if (this.statusEl) this.statusEl.setText(`${label}스타일 적용 중... (${done}/${total})`);
+        await this.applyMessageStyling(clone, (done, msgTotal) => {
+          if (this.statusEl) this.statusEl.setText(`${label}스타일 적용 중... (${done}/${msgTotal})`);
         });
         if (this.statusEl) this.statusEl.setText(`${label}인코딩 중...`);
         const blobOptions = {
@@ -1514,14 +1704,88 @@ var ChatCaptureSession = class {
         if (format === "jpg") blobOptions.quality = JPEG_QUALITY;
         const blob = await toBlob(clone, blobOptions);
         if (!blob) throw new Error("이미지 인코딩 실패");
-        if (this.statusEl) this.statusEl.setText(`${label}저장 중...`);
-        const suffix = chunks.length > 1 ? `_part${c + 1}` : "";
-        const savedPath = await saveImageToVault(this.app, this.sessionFile, blob, IMAGE_FORMAT_EXTENSIONS[format], ts, suffix);
-        savedPaths.push(savedPath);
+        images.push({blob, url: URL.createObjectURL(blob)});
         wrapper.remove();
         activeWrappers.pop();
       }
 
+      if (this.statusEl) this.statusEl.setText("미리보기 준비 완료");
+      this.openPreview(images, format);
+    } catch (err) {
+      new import_obsidian3.Notice(`미리보기 생성에 실패했습니다: ${err.message}`);
+      this.capturing = false;
+      if (this.captureBtn) this.captureBtn.disabled = false;
+      if (this.statusEl) this.statusEl.setText("준비 완료");
+    } finally {
+      for (const wrapper of activeWrappers) wrapper.remove();
+    }
+  }
+  openPreview(images, format) {
+    this.hideToolbar();
+    const modal = new CapturePreviewModal(this.app, images, {
+      showNameReplacementsReset: this.settings.nameMode === "replace",
+      onClose: () => this.showToolbar(),
+      onSave: () => {
+        this.revokePreviewUrls(images);
+        void this.saveImages(images, format);
+      },
+      onReselect: () => {
+        this.revokePreviewUrls(images);
+        this.baselineClones = null;
+        this.capturing = false;
+        if (this.captureBtn) this.captureBtn.disabled = false;
+        this.resetSelection();
+      },
+      onResetOptions: () => {
+        this.revokePreviewUrls(images);
+        this.capturing = false;
+        this.hideToolbar();
+        new CaptureOptionsModal(
+          this.app,
+          this.settings,
+          async (settings) => {
+            this.settings = settings;
+            if (this.onSettingsChange) await this.onSettingsChange(this.settings);
+            void this.reEncodePreview();
+          },
+          "재생성",
+          () => void this.reEncodePreview(),
+        ).open();
+      },
+      onResetNameReplacements: () => {
+        this.revokePreviewUrls(images);
+        this.capturing = false;
+        this.hideToolbar();
+        const currentRange = this.getSelectedRange();
+        const names = currentRange ? this.getNamesInRange(currentRange) : [];
+        this.openNameMapping(names, () => void this.reEncodePreview());
+      },
+      onCancel: () => {
+        this.revokePreviewUrls(images);
+        this.capturing = false;
+        if (this.captureBtn) this.captureBtn.disabled = false;
+        if (this.statusEl) this.statusEl.setText("영역 선택 완료");
+      },
+    });
+    modal.open();
+  }
+  revokePreviewUrls(images) {
+    for (const image of images) {
+      try {
+        URL.revokeObjectURL(image.url);
+      } catch (e) {}
+    }
+  }
+  async saveImages(images, format) {
+    if (this.statusEl) this.statusEl.setText("저장 중...");
+    try {
+      const ts = timestamp();
+      const savedPaths = [];
+      for (let i = 0; i < images.length; i += 1) {
+        const suffix = images.length > 1 ? `_part${i + 1}` : "";
+        const savedPath = await saveImageToVault(this.app, this.sessionFile, images[i].blob, IMAGE_FORMAT_EXTENSIONS[format], ts, suffix);
+        savedPaths.push(savedPath);
+      }
       const message =
         savedPaths.length > 1 ?
           `캡쳐본을 ${savedPaths.length}장으로 나눠 저장했습니다:
@@ -1535,8 +1799,6 @@ ${savedPaths[0]}`;
       this.capturing = false;
       if (this.captureBtn) this.captureBtn.disabled = false;
       if (this.statusEl) this.statusEl.setText("준비 완료");
-    } finally {
-      for (const wrapper of activeWrappers) wrapper.remove();
     }
   }
   cleanup() {
@@ -1569,7 +1831,7 @@ var DEFAULT_CAPTURE_SETTINGS = {
   nameMode: "show",
   userAvatarMode: "show",
   characterAvatarMode: "show",
-  nameReplacements: {},
+  nameReplacementsBySession: {},
   imageFormat: "png",
   maxMessagesPerCapture: 20,
 };
