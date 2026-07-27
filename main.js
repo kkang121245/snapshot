@@ -3,27 +3,22 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
-  for (var name in all)
-    __defProp(target, name, { get: all[name], enumerable: true });
+  for (var name in all) __defProp(target, name, {get: all[name], enumerable: true});
 };
 var __copyProps = (to, from, except, desc) => {
-  if (from && typeof from === "object" || typeof from === "function") {
-    for (let key of __getOwnPropNames(from))
-      if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  if ((from && typeof from === "object") || typeof from === "function") {
+    for (let key of __getOwnPropNames(from)) if (!__hasOwnProp.call(to, key) && key !== except) __defProp(to, key, {get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable});
   }
   return to;
 };
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", {value: true}), mod);
 
 var main_exports = {};
 __export(main_exports, {
-  default: () => ChatSnapshotPlugin
+  default: () => ChatSnapshotPlugin,
 });
 module.exports = __toCommonJS(main_exports);
 var import_obsidian4 = require("obsidian");
-
 
 function getStellaEngine(app) {
   var _a, _b;
@@ -31,54 +26,102 @@ function getStellaEngine(app) {
   return plugin != null ? plugin : null;
 }
 
-
 var import_obsidian = require("obsidian");
 var CaptureOptionsModal = class extends import_obsidian.Modal {
   constructor(app, initial, onSubmit) {
     super(app);
-    this.settings = { ...initial };
+    this.settings = {...initial};
     this.onSubmit = onSubmit;
   }
   onOpen() {
-    const { contentEl } = this;
+    const {contentEl} = this;
     contentEl.empty();
-    contentEl.createEl("h3", { text: "캡쳐 옵션" });
+    contentEl.createEl("h3", {text: "캡쳐 옵션"});
     contentEl.createEl("p", {
       text: "옵션을 정한 뒤 저장할 메시지의 시작과 끝을 채팅창에서 직접 탭하세요.",
-      cls: "ggai-snap-modal-hint"
+      cls: "ggai-snap-modal-hint",
     });
-    new import_obsidian.Setting(contentEl).setName("이름 표시").setDesc("캐릭터 이름을 어떻게 표시할지 선택하세요.").addDropdown((dropdown) => {
-      dropdown.addOption("show", "표시").addOption("hide", "숨기기").addOption("replace", "대체 텍스트").setValue(this.settings.nameMode).onChange((value) => {
-        this.settings.nameMode = value;
+    new import_obsidian.Setting(contentEl)
+      .setName("이름 표시")
+      .setDesc("캐릭터 이름을 어떻게 표시할지 선택하세요.")
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption("show", "표시")
+          .addOption("hide", "숨기기")
+          .addOption("replace", "대체 텍스트")
+          .setValue(this.settings.nameMode)
+          .onChange((value) => {
+            this.settings.nameMode = value;
+          });
       });
-    });
-    new import_obsidian.Setting(contentEl).setName("깡캐 프로필 표시").setDesc("프로필 이미지를 어떻게 표시할지 선택하세요.").addDropdown((dropdown) => {
-      dropdown.addOption("show", "표시").addOption("hide", "숨기기").setValue(this.settings.userAvatarMode).onChange((value) => {
-        this.settings.userAvatarMode = value;
+    new import_obsidian.Setting(contentEl)
+      .setName("깡캐 프로필 표시")
+      .setDesc("프로필 이미지를 어떻게 표시할지 선택하세요.")
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption("show", "표시")
+          .addOption("hide", "숨기기")
+          .setValue(this.settings.userAvatarMode)
+          .onChange((value) => {
+            this.settings.userAvatarMode = value;
+          });
       });
-    });
-    new import_obsidian.Setting(contentEl).setName("깡통 프로필 표시").setDesc("프로필 이미지를 어떻게 표시할지 선택하세요.").addDropdown((dropdown) => {
-      dropdown.addOption("show", "표시").addOption("hide", "숨기기").setValue(this.settings.characterAvatarMode).onChange((value) => {
-        this.settings.characterAvatarMode = value;
+    new import_obsidian.Setting(contentEl)
+      .setName("깡통 프로필 표시")
+      .setDesc("프로필 이미지를 어떻게 표시할지 선택하세요.")
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption("show", "표시")
+          .addOption("hide", "숨기기")
+          .setValue(this.settings.characterAvatarMode)
+          .onChange((value) => {
+            this.settings.characterAvatarMode = value;
+          });
       });
-    });
-    new import_obsidian.Setting(contentEl).addButton((btn) => {
-      btn.setButtonText("취소").onClick(() => this.close());
-    }).addButton((btn) => {
-      btn.setButtonText("구간 선택").setCta().onClick(() => {
-        this.onSubmit(this.settings);
-        this.close();
+    new import_obsidian.Setting(contentEl)
+      .setName("이미지 형식")
+      .setDesc("PNG는 화질이 좋은 대신 용량이 크고, JPG는 화질 저하가 있는 대신 용량이 작습니다.")
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption("png", "PNG")
+          .addOption("jpg", "JPG")
+          .setValue(this.settings.imageFormat || "png")
+          .onChange((value) => {
+            this.settings.imageFormat = value;
+          });
       });
-    });
+    new import_obsidian.Setting(contentEl)
+      .setName("최대 캡쳐 메시지 수")
+      .setDesc("한 번에 캡쳐할 수 있는 메시지 개수를 제한합니다.")
+      .addSlider((slider) => {
+        slider
+          .setLimits(5, 50, 5)
+          .setValue(this.settings.maxMessagesPerCapture || 20)
+          .setDynamicTooltip()
+          .onChange((value) => {
+            this.settings.maxMessagesPerCapture = value;
+          });
+      });
+    new import_obsidian.Setting(contentEl)
+      .addButton((btn) => {
+        btn.setButtonText("취소").onClick(() => this.close());
+      })
+      .addButton((btn) => {
+        btn
+          .setButtonText("구간 선택")
+          .setCta()
+          .onClick(() => {
+            this.onSubmit(this.settings);
+            this.close();
+          });
+      });
   }
   onClose() {
     this.contentEl.empty();
   }
 };
 
-
 var import_obsidian3 = require("obsidian");
-
 
 function resolveUrl(url, baseUrl) {
   if (url.match(/^[a-z]+:\/\//i)) {
@@ -103,10 +146,7 @@ function resolveUrl(url, baseUrl) {
 }
 var uuid = (() => {
   let counter = 0;
-  const random = () => (
-    
-    `0000${(Math.random() * 36 ** 4 << 0).toString(36)}`.slice(-4)
-  );
+  const random = () => `0000${((Math.random() * 36 ** 4) << 0).toString(36)}`.slice(-4);
   return () => {
     counter += 1;
     return `u${random()}${counter}`;
@@ -149,15 +189,14 @@ function getNodeHeight(node) {
 function getImageSize(targetNode, options = {}) {
   const width = options.width || getNodeWidth(targetNode);
   const height = options.height || getNodeHeight(targetNode);
-  return { width, height };
+  return {width, height};
 }
 function getPixelRatio() {
   let ratio;
   let FINAL_PROCESS;
   try {
     FINAL_PROCESS = process;
-  } catch (e) {
-  }
+  } catch (e) {}
   const val = FINAL_PROCESS && FINAL_PROCESS.env ? FINAL_PROCESS.env.devicePixelRatio : null;
   if (val) {
     ratio = parseInt(val, 10);
@@ -200,9 +239,11 @@ function canvasToBlob(canvas, options = {}) {
     for (let i = 0; i < len; i += 1) {
       binaryArray[i] = binaryString.charCodeAt(i);
     }
-    resolve(new Blob([binaryArray], {
-      type: options.type ? options.type : "image/png"
-    }));
+    resolve(
+      new Blob([binaryArray], {
+        type: options.type ? options.type : "image/png",
+      }),
+    );
   });
 }
 function createImage(url) {
@@ -220,7 +261,10 @@ function createImage(url) {
   });
 }
 async function svgToDataURL(svg) {
-  return Promise.resolve().then(() => new XMLSerializer().serializeToString(svg)).then(encodeURIComponent).then((html) => `data:image/svg+xml;charset=utf-8,${html}`);
+  return Promise.resolve()
+    .then(() => new XMLSerializer().serializeToString(svg))
+    .then(encodeURIComponent)
+    .then((html) => `data:image/svg+xml;charset=utf-8,${html}`);
 }
 async function nodeToDataURL(node, width, height) {
   const xmlns = "http://www.w3.org/2000/svg";
@@ -239,25 +283,24 @@ async function nodeToDataURL(node, width, height) {
   return svgToDataURL(svg);
 }
 var isInstanceOfElement = (node, instance) => {
-  if (node instanceof instance)
-    return true;
+  if (node instanceof instance) return true;
   const nodePrototype = Object.getPrototypeOf(node);
-  if (nodePrototype === null)
-    return false;
+  if (nodePrototype === null) return false;
   return nodePrototype.constructor.name === instance.name || isInstanceOfElement(nodePrototype, instance);
 };
-
 
 function formatCSSText(style) {
   const content = style.getPropertyValue("content");
   return `${style.cssText} content: '${content.replace(/'|"/g, "")}';`;
 }
 function formatCSSProperties(style, options) {
-  return getStyleProperties(options).map((name) => {
-    const value = style.getPropertyValue(name);
-    const priority = style.getPropertyPriority(name);
-    return `${name}: ${value}${priority ? " !important" : ""};`;
-  }).join(" ");
+  return getStyleProperties(options)
+    .map((name) => {
+      const value = style.getPropertyValue(name);
+      const priority = style.getPropertyPriority(name);
+      return `${name}: ${value}${priority ? " !important" : ""};`;
+    })
+    .join(" ");
 }
 function getPseudoElementStyle(className, pseudo, style, options) {
   const selector = `.${className}:${pseudo}`;
@@ -285,7 +328,6 @@ function clonePseudoElements(nativeNode, clonedNode, options) {
   clonePseudoElement(nativeNode, clonedNode, ":after", options);
 }
 
-
 var WOFF = "application/font-woff";
 var JPEG = "image/jpeg";
 var mimes = {
@@ -299,7 +341,7 @@ var mimes = {
   gif: "image/gif",
   tiff: "image/tiff",
   svg: "image/svg+xml",
-  webp: "image/webp"
+  webp: "image/webp",
 };
 function getExtension(url) {
   const match = /\.([^./]*?)$/g.exec(url);
@@ -309,7 +351,6 @@ function getMimeType(url) {
   const extension = getExtension(url).toLowerCase();
   return mimes[extension] || "";
 }
-
 
 function getContentFromDataUrl(dataURL) {
   return dataURL.split(/,/)[1];
@@ -331,7 +372,7 @@ async function fetchAsDataURL(url, init, process2) {
     reader.onerror = reject;
     reader.onloadend = () => {
       try {
-        resolve(process2({ res, result: reader.result }));
+        resolve(process2({res, result: reader.result}));
       } catch (error) {
         reject(error);
       }
@@ -356,11 +397,11 @@ async function resourceToDataURL(resourceUrl, contentType, options) {
     return cache[cacheKey];
   }
   if (options.cacheBust) {
-    resourceUrl += (/\?/.test(resourceUrl) ? "&" : "?") + (new Date()).getTime();
+    resourceUrl += (/\?/.test(resourceUrl) ? "&" : "?") + new Date().getTime();
   }
   let dataURL;
   try {
-    const content = await fetchAsDataURL(resourceUrl, options.fetchRequestInit, ({ res, result }) => {
+    const content = await fetchAsDataURL(resourceUrl, options.fetchRequestInit, ({res, result}) => {
       if (!contentType) {
         contentType = res.headers.get("Content-Type") || "";
       }
@@ -380,7 +421,6 @@ async function resourceToDataURL(resourceUrl, contentType, options) {
   cache[cacheKey] = dataURL;
   return dataURL;
 }
-
 
 async function cloneCanvasElement(canvas) {
   const dataURL = canvas.toDataURL();
@@ -410,8 +450,7 @@ async function cloneIFrameElement(iframe, options) {
     if ((_a = iframe === null || iframe === void 0 ? void 0 : iframe.contentDocument) === null || _a === void 0 ? void 0 : _a.body) {
       return await cloneNode(iframe.contentDocument.body, options, true);
     }
-  } catch (_b) {
-  }
+  } catch (_b) {}
   return iframe.cloneNode(false);
 }
 async function cloneSingleNode(node, options) {
@@ -444,11 +483,17 @@ async function cloneChildren(nativeNode, clonedNode, options) {
   if (children.length === 0 || isInstanceOfElement(nativeNode, HTMLVideoElement)) {
     return clonedNode;
   }
-  await children.reduce((deferred, child) => deferred.then(() => cloneNode(child, options)).then((clonedChild) => {
-    if (clonedChild) {
-      clonedNode.appendChild(clonedChild);
-    }
-  }), Promise.resolve());
+  await children.reduce(
+    (deferred, child) =>
+      deferred
+        .then(() => cloneNode(child, options))
+        .then((clonedChild) => {
+          if (clonedChild) {
+            clonedNode.appendChild(clonedChild);
+          }
+        }),
+    Promise.resolve(),
+  );
   return clonedNode;
 }
 function cloneCSSStyle(nativeNode, clonedNode, options) {
@@ -543,9 +588,12 @@ async function cloneNode(node, options, isRoot) {
   if (!isRoot && options.filter && !options.filter(node)) {
     return null;
   }
-  return Promise.resolve(node).then((clonedNode) => cloneSingleNode(clonedNode, options)).then((clonedNode) => cloneChildren(node, clonedNode, options)).then((clonedNode) => decorate(node, clonedNode, options)).then((clonedNode) => ensureSVGSymbols(clonedNode, options));
+  return Promise.resolve(node)
+    .then((clonedNode) => cloneSingleNode(clonedNode, options))
+    .then((clonedNode) => cloneChildren(node, clonedNode, options))
+    .then((clonedNode) => decorate(node, clonedNode, options))
+    .then((clonedNode) => ensureSVGSymbols(clonedNode, options));
 }
-
 
 var URL_REGEX = /url\((['"]?)([^'"]+?)\1\)/g;
 var URL_WITH_FORMAT_REGEX = /url\([^)]+\)\s*format\((["']?)([^"']+)\1\)/g;
@@ -574,22 +622,23 @@ async function embed(cssText, resourceURL, baseURL, options, getContentFromUrl) 
       dataURL = await resourceToDataURL(resolvedURL, contentType, options);
     }
     return cssText.replace(toRegex(resourceURL), `$1${dataURL}$3`);
-  } catch (error) {
-  }
+  } catch (error) {}
   return cssText;
 }
-function filterPreferredFontFormat(str, { preferredFontFormat }) {
-  return !preferredFontFormat ? str : str.replace(FONT_SRC_REGEX, (match) => {
-    while (true) {
-      const [src, , format] = URL_WITH_FORMAT_REGEX.exec(match) || [];
-      if (!format) {
-        return "";
-      }
-      if (format === preferredFontFormat) {
-        return `src: ${src};`;
-      }
-    }
-  });
+function filterPreferredFontFormat(str, {preferredFontFormat}) {
+  return !preferredFontFormat ? str : (
+      str.replace(FONT_SRC_REGEX, (match) => {
+        while (true) {
+          const [src, , format] = URL_WITH_FORMAT_REGEX.exec(match) || [];
+          if (!format) {
+            return "";
+          }
+          if (format === preferredFontFormat) {
+            return `src: ${src};`;
+          }
+        }
+      })
+    );
 }
 function shouldEmbed(url) {
   return url.search(URL_REGEX) !== -1;
@@ -603,7 +652,6 @@ async function embedResources(cssText, baseUrl, options) {
   return urls.reduce((deferred, url) => deferred.then((css) => embed(css, url, baseUrl, options)), Promise.resolve(filteredCSSText));
 }
 
-
 async function embedProp(propName, node, options) {
   var _a;
   const propValue = (_a = node.style) === null || _a === void 0 ? void 0 : _a.getPropertyValue(propName);
@@ -615,9 +663,8 @@ async function embedProp(propName, node, options) {
   return false;
 }
 async function embedBackground(clonedNode, options) {
-  ;
-  await embedProp("background", clonedNode, options) || await embedProp("background-image", clonedNode, options);
-  await embedProp("mask", clonedNode, options) || await embedProp("-webkit-mask", clonedNode, options) || await embedProp("mask-image", clonedNode, options) || await embedProp("-webkit-mask-image", clonedNode, options);
+  (await embedProp("background", clonedNode, options)) || (await embedProp("background-image", clonedNode, options));
+  (await embedProp("mask", clonedNode, options)) || (await embedProp("-webkit-mask", clonedNode, options)) || (await embedProp("mask-image", clonedNode, options)) || (await embedProp("-webkit-mask-image", clonedNode, options));
 }
 async function embedImageNode(clonedNode, options) {
   const isImageElement = isInstanceOfElement(clonedNode, HTMLImageElement);
@@ -628,13 +675,16 @@ async function embedImageNode(clonedNode, options) {
   const dataURL = await resourceToDataURL(url, getMimeType(url), options);
   await new Promise((resolve, reject) => {
     clonedNode.onload = resolve;
-    clonedNode.onerror = options.onImageErrorHandler ? (...attributes) => {
-      try {
-        resolve(options.onImageErrorHandler(...attributes));
-      } catch (error) {
-        reject(error);
-      }
-    } : reject;
+    clonedNode.onerror =
+      options.onImageErrorHandler ?
+        (...attributes) => {
+          try {
+            resolve(options.onImageErrorHandler(...attributes));
+          } catch (error) {
+            reject(error);
+          }
+        }
+      : reject;
     const image = clonedNode;
     if (image.decode) {
       image.decode = resolve;
@@ -663,9 +713,8 @@ async function embedImages(clonedNode, options) {
   }
 }
 
-
 function applyStyle(node, options) {
-  const { style } = node;
+  const {style} = node;
   if (options.backgroundColor) {
     style.backgroundColor = options.backgroundColor;
   }
@@ -684,7 +733,6 @@ function applyStyle(node, options) {
   return node;
 }
 
-
 var cssFetchCache = {};
 async function fetchCSS(url) {
   let cache2 = cssFetchCache[url];
@@ -693,7 +741,7 @@ async function fetchCSS(url) {
   }
   const res = await fetch(url);
   const cssText = await res.text();
-  cache2 = { url, cssText };
+  cache2 = {url, cssText};
   cssFetchCache[url] = cache2;
   return cache2;
 }
@@ -706,7 +754,7 @@ async function embedFonts(data, options) {
     if (!url.startsWith("https://")) {
       url = new URL(url, data.url).href;
     }
-    return fetchAsDataURL(url, options.fetchRequestInit, ({ result }) => {
+    return fetchAsDataURL(url, options.fetchRequestInit, ({result}) => {
       cssText = cssText.replace(loc, `url(${result})`);
       return [loc, result];
     });
@@ -758,29 +806,41 @@ async function getCSSRules(styleSheets, options) {
           if (item.type === CSSRule.IMPORT_RULE) {
             let importIndex = index + 1;
             const url = item.href;
-            const deferred = fetchCSS(url).then((metadata) => embedFonts(metadata, options)).then((cssText) => parseCSS(cssText).forEach((rule) => {
-              try {
-                sheet.insertRule(rule, rule.startsWith("@import") ? importIndex += 1 : sheet.cssRules.length);
-              } catch (error) {
-                console.error("Error inserting rule from remote css", {
-                  rule,
-                  error
-                });
-              }
-            })).catch((e) => {
-              console.error("Error loading remote css", e.toString());
-            });
+            const deferred = fetchCSS(url)
+              .then((metadata) => embedFonts(metadata, options))
+              .then((cssText) =>
+                parseCSS(cssText).forEach((rule) => {
+                  try {
+                    sheet.insertRule(rule, rule.startsWith("@import") ? (importIndex += 1) : sheet.cssRules.length);
+                  } catch (error) {
+                    console.error("Error inserting rule from remote css", {
+                      rule,
+                      error,
+                    });
+                  }
+                }),
+              )
+              .catch((e) => {
+                console.error("Error loading remote css", e.toString());
+              });
             deferreds.push(deferred);
           }
         });
       } catch (e) {
         const inline = styleSheets.find((a) => a.href == null) || document.styleSheets[0];
         if (sheet.href != null) {
-          deferreds.push(fetchCSS(sheet.href).then((metadata) => embedFonts(metadata, options)).then((cssText) => parseCSS(cssText).forEach((rule) => {
-            inline.insertRule(rule, inline.cssRules.length);
-          })).catch((err) => {
-            console.error("Error loading remote stylesheet", err);
-          }));
+          deferreds.push(
+            fetchCSS(sheet.href)
+              .then((metadata) => embedFonts(metadata, options))
+              .then((cssText) =>
+                parseCSS(cssText).forEach((rule) => {
+                  inline.insertRule(rule, inline.cssRules.length);
+                }),
+              )
+              .catch((err) => {
+                console.error("Error loading remote stylesheet", err);
+              }),
+          );
         }
         console.error("Error inlining remote css file", e);
       }
@@ -834,14 +894,21 @@ function getUsedFonts(node) {
 async function getWebFontCSS(node, options) {
   const rules = await parseWebFontRules(node, options);
   const usedFonts = getUsedFonts(node);
-  const cssTexts = await Promise.all(rules.filter((rule) => usedFonts.has(normalizeFontFamily(rule.style.fontFamily))).map((rule) => {
-    const baseUrl = rule.parentStyleSheet ? rule.parentStyleSheet.href : null;
-    return embedResources(rule.cssText, baseUrl, options);
-  }));
+  const cssTexts = await Promise.all(
+    rules
+      .filter((rule) => usedFonts.has(normalizeFontFamily(rule.style.fontFamily)))
+      .map((rule) => {
+        const baseUrl = rule.parentStyleSheet ? rule.parentStyleSheet.href : null;
+        return embedResources(rule.cssText, baseUrl, options);
+      }),
+  );
   return cssTexts.join("\n");
 }
 async function embedWebFonts(clonedNode, options) {
-  const cssText = options.fontEmbedCSS != null ? options.fontEmbedCSS : options.skipFonts ? null : await getWebFontCSS(clonedNode, options);
+  const cssText =
+    options.fontEmbedCSS != null ? options.fontEmbedCSS
+    : options.skipFonts ? null
+    : await getWebFontCSS(clonedNode, options);
   if (cssText) {
     const styleNode = document.createElement("style");
     const sytleContent = document.createTextNode(cssText);
@@ -854,9 +921,8 @@ async function embedWebFonts(clonedNode, options) {
   }
 }
 
-
 async function toSvg(node, options = {}) {
-  const { width, height } = getImageSize(node, options);
+  const {width, height} = getImageSize(node, options);
   const clonedNode = await cloneNode(node, options, true);
   await embedWebFonts(clonedNode, options);
   await embedImages(clonedNode, options);
@@ -865,7 +931,7 @@ async function toSvg(node, options = {}) {
   return datauri;
 }
 async function toCanvas(node, options = {}) {
-  const { width, height } = getImageSize(node, options);
+  const {width, height} = getImageSize(node, options);
   const svg = await toSvg(node, options);
   const img = await createImage(svg);
   const canvas = document.createElement("canvas");
@@ -889,10 +955,9 @@ async function toCanvas(node, options = {}) {
 }
 async function toBlob(node, options = {}) {
   const canvas = await toCanvas(node, options);
-  const blob = await canvasToBlob(canvas);
+  const blob = await canvasToBlob(canvas, options);
   return blob;
 }
-
 
 var COLOR_FN_NAMES = ["color-mix", "oklch", "oklab", "lch", "lab", "color"];
 var scratchCtx = null;
@@ -957,79 +1022,58 @@ function resolveColorFunctions(input) {
   return result;
 }
 
-
 var import_obsidian2 = require("obsidian");
 var NameMappingModal = class extends import_obsidian2.Modal {
   constructor(app, names, existingMap, onSubmit, onLiveChange) {
     super(app);
     this.names = names;
-    this.map = { ...existingMap };
+    this.map = {...existingMap};
     this.onSubmit = onSubmit;
     this.onLiveChange = onLiveChange;
   }
   onOpen() {
-    const { contentEl } = this;
+    const {contentEl} = this;
     contentEl.empty();
-    contentEl.createEl("h3", { text: "이름 바꾸기" });
+    contentEl.createEl("h3", {text: "이름 바꾸기"});
     contentEl.createEl("p", {
       text: "대체할 텍스트를 입력하세요. 비워두면 원래 이름 그대로 표시됩니다.",
-      cls: "ggai-snap-modal-hint"
+      cls: "ggai-snap-modal-hint",
     });
     for (const name of this.names) {
       const setting = new import_obsidian2.Setting(contentEl).setName(name).addText((text) => {
         text.setPlaceholder(name).setValue(this.map[name] || "");
         text.onChange((value) => {
           this.map[name] = value;
-          if (this.onLiveChange) this.onLiveChange({ ...this.map });
+          if (this.onLiveChange) this.onLiveChange({...this.map});
         });
       });
       setting.settingEl.addClass("ggai-snap-modal-field");
     }
-    new import_obsidian2.Setting(contentEl).addButton((btn) => {
-      btn.setButtonText("취소").onClick(() => this.close());
-    }).addButton((btn) => {
-      btn.setButtonText("캡쳐").setCta().onClick(() => {
-        this.onSubmit(this.map);
-        this.close();
+    new import_obsidian2.Setting(contentEl)
+      .addButton((btn) => {
+        btn.setButtonText("취소").onClick(() => this.close());
+      })
+      .addButton((btn) => {
+        btn
+          .setButtonText("캡쳐")
+          .setCta()
+          .onClick(() => {
+            this.onSubmit(this.map);
+            this.close();
+          });
       });
-    });
   }
   onClose() {
     this.contentEl.empty();
   }
 };
 
-
 var MESSAGES_SELECTOR = ".ggai-chat-messages";
 var MSG_SELECTOR = ".ggai-chat-msg";
 var MOBILE_WIDTH_PX = 390;
 var AVATAR_SHRINK_THRESHOLD_PX = 50;
 var AVATAR_SHRINK_TARGET_PX = 40;
-var BAKE_EXCLUDE_PROPS = new Set([
-  "width",
-  "height",
-  "max-width",
-  "max-height",
-  "min-width",
-  "min-height",
-  "inline-size",
-  "block-size",
-  "position",
-  "top",
-  "left",
-  "right",
-  "bottom",
-  "transform",
-  "transform-origin",
-  "align-self",
-  "flex-basis",
-  "grid-column",
-  "grid-row",
-  "grid-column-start",
-  "grid-column-end",
-  "grid-row-start",
-  "grid-row-end"
-]);
+var BAKE_EXCLUDE_PROPS = new Set(["width", "height", "max-width", "max-height", "min-width", "min-height", "inline-size", "block-size", "position", "top", "left", "right", "bottom", "transform", "transform-origin", "align-self", "flex-basis", "grid-column", "grid-row", "grid-column-start", "grid-column-end", "grid-row-start", "grid-row-end"]);
 function bakeComputedStyle(source, target) {
   const cs = getComputedStyle(source);
   let cssText = "";
@@ -1056,9 +1100,7 @@ function pad2(n) {
 }
 function timestamp() {
   const d = new Date();
-  return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${pad2(
-    d.getHours()
-  )}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
+  return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
 }
 function ensureImageLoaded(img, timeoutMs = 1500) {
   if (img.complete && (img.naturalWidth || img.width)) return Promise.resolve(img);
@@ -1078,7 +1120,7 @@ function ensureImageLoaded(img, timeoutMs = 1500) {
     setTimeout(() => finish(img.naturalWidth || img.width ? img : null), timeoutMs);
   });
 }
-async function saveImageToVault(app, sessionFile, blob) {
+async function saveImageToVault(app, sessionFile, blob, extension = "png") {
   const normalized = sessionFile.replace(/\\/g, "/");
   const parts = normalized.split("/").filter(Boolean);
   parts.pop();
@@ -1097,12 +1139,13 @@ async function saveImageToVault(app, sessionFile, blob) {
     await app.vault.createFolder(folder);
   }
 
-  let counter = 1;
-  let filename = `${sessionName}_${counter}.png`;
+  const ts = timestamp();
+  let filename = `${sessionName}_${ts}.${extension}`;
   let fullPath = `${folder}/${filename}`;
+  let counter = 1;
   while (await app.vault.adapter.exists(fullPath)) {
     counter += 1;
-    filename = `${sessionName}_${counter}.png`;
+    filename = `${sessionName}_${ts}_${counter}.${extension}`;
     fullPath = `${folder}/${filename}`;
   }
   const buf = await blob.arrayBuffer();
@@ -1143,16 +1186,16 @@ var ChatCaptureSession = class {
     return true;
   }
   buildToolbar() {
-    const bar = document.body.createDiv({ cls: "ggai-snap-toolbar" });
-    this.statusEl = bar.createSpan({ cls: "ggai-snap-status" });
-    const resetBtn = bar.createEl("button", { text: "다시 선택" });
+    const bar = document.body.createDiv({cls: "ggai-snap-toolbar"});
+    this.statusEl = bar.createSpan({cls: "ggai-snap-status"});
+    const resetBtn = bar.createEl("button", {text: "다시 선택"});
     resetBtn.addEventListener("click", () => this.resetSelection());
-    const captureBtn = bar.createEl("button", { text: "캡쳐" });
+    const captureBtn = bar.createEl("button", {text: "캡쳐"});
     captureBtn.addClass("mod-cta");
     captureBtn.disabled = true;
     captureBtn.addEventListener("click", () => void this.onCaptureButtonClick());
     this.captureBtn = captureBtn;
-    const cancelBtn = bar.createEl("button", { text: "취소" });
+    const cancelBtn = bar.createEl("button", {text: "취소"});
     cancelBtn.addEventListener("click", () => this.cleanup());
     this.toolbarEl = bar;
   }
@@ -1176,13 +1219,27 @@ var ChatCaptureSession = class {
     if (!this.startId) {
       this.startId = nodeId;
     } else if (!this.endId) {
-      this.endId = nodeId;
+      this.endId = this.clampToMaxRange(this.startId, nodeId);
     } else {
       this.startId = nodeId;
       this.endId = null;
     }
     this.applyHighlight();
     this.updateStatus();
+  }
+  clampToMaxRange(startId, candidateId) {
+    const max = this.settings.maxMessagesPerCapture > 0 ? this.settings.maxMessagesPerCapture : 20;
+    const msgEls = this.getOrderedMessageEls();
+    const startIdx = msgEls.findIndex((el) => el.dataset.nodeId === startId);
+    const candidateIdx = msgEls.findIndex((el) => el.dataset.nodeId === candidateId);
+    if (startIdx < 0 || candidateIdx < 0) return candidateId;
+    const count = Math.abs(candidateIdx - startIdx) + 1;
+    if (count <= max) return candidateId;
+    const clampedIdx = candidateIdx > startIdx ? startIdx + max - 1 : startIdx - (max - 1);
+    const clampedEl = msgEls[clampedIdx];
+    if (!clampedEl) return candidateId;
+    new import_obsidian3.Notice(`최대 ${max}개 메시지까지 선택할 수 있습니다.`);
+    return clampedEl.dataset.nodeId;
   }
   getOrderedMessageEls() {
     if (!this.container) return [];
@@ -1193,13 +1250,13 @@ var ChatCaptureSession = class {
     const msgEls = this.getOrderedMessageEls();
     const startIdx = msgEls.findIndex((el) => el.dataset.nodeId === this.startId);
     if (startIdx < 0) return null;
-    if (!this.endId) return { lo: startIdx, hi: startIdx, msgEls };
+    if (!this.endId) return {lo: startIdx, hi: startIdx, msgEls};
     const endIdx = msgEls.findIndex((el) => el.dataset.nodeId === this.endId);
-    if (endIdx < 0) return { lo: startIdx, hi: startIdx, msgEls };
-    return { lo: Math.min(startIdx, endIdx), hi: Math.max(startIdx, endIdx), msgEls };
+    if (endIdx < 0) return {lo: startIdx, hi: startIdx, msgEls};
+    return {lo: Math.min(startIdx, endIdx), hi: Math.max(startIdx, endIdx), msgEls};
   }
   getNamesInRange(range) {
-    const { lo, hi, msgEls } = range;
+    const {lo, hi, msgEls} = range;
     const names = [];
     const seen = new Set();
     for (let i = lo; i <= hi; i += 1) {
@@ -1224,14 +1281,14 @@ var ChatCaptureSession = class {
           names,
           this.settings.nameReplacements || {},
           async (map) => {
-            this.settings.nameReplacements = { ...this.settings.nameReplacements || {}, ...map };
+            this.settings.nameReplacements = {...(this.settings.nameReplacements || {}), ...map};
             if (this.onSettingsChange) await this.onSettingsChange(this.settings);
             void this.capture();
           },
           (liveMap) => {
-            this.settings.nameReplacements = { ...this.settings.nameReplacements || {}, ...liveMap };
+            this.settings.nameReplacements = {...(this.settings.nameReplacements || {}), ...liveMap};
             if (this.onSettingsChange) void this.onSettingsChange(this.settings);
-          }
+          },
         ).open();
         return;
       }
@@ -1242,10 +1299,22 @@ var ChatCaptureSession = class {
     const msgEls = this.getOrderedMessageEls();
     for (const el of msgEls) {
       el.classList.remove("ggai-snap-endpoint", "ggai-snap-in-range");
+      el.style.opacity = "";
+    }
+    const max = this.settings.maxMessagesPerCapture > 0 ? this.settings.maxMessagesPerCapture : 20;
+    if (this.startId && !this.endId) {
+      const startIdx = msgEls.findIndex((el) => el.dataset.nodeId === this.startId);
+      if (startIdx >= 0) {
+        for (let i = 0; i < msgEls.length; i += 1) {
+          if (Math.abs(i - startIdx) > max - 1) {
+            msgEls[i].style.opacity = "0.35";
+          }
+        }
+      }
     }
     const range = this.getSelectedRange();
     if (!range) return;
-    const { lo, hi, msgEls: ordered } = range;
+    const {lo, hi, msgEls: ordered} = range;
     for (let i = lo; i <= hi; i += 1) {
       ordered[i].classList.add(i === lo || i === hi ? "ggai-snap-endpoint" : "ggai-snap-in-range");
     }
@@ -1269,14 +1338,20 @@ var ChatCaptureSession = class {
     this.applyHighlight();
     this.updateStatus();
   }
-  buildMobileClone(rangeEls) {
+  async buildMobileClone(rangeEls, onProgress) {
     const clone = this.container.cloneNode(false);
     clone.classList.remove("ggai-snap-mode");
     bakeComputedStyle(this.container, clone);
-    for (const el of rangeEls) {
+    const total = rangeEls.length;
+    for (let i = 0; i < rangeEls.length; i += 1) {
+      const el = rangeEls[i];
       const elClone = el.cloneNode(true);
       bakeTree(el, elClone);
       clone.appendChild(elClone);
+      if (onProgress) onProgress(i + 1, total);
+      if ((i + 1) % 3 === 0) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+      }
     }
     clone.style.width = `${MOBILE_WIDTH_PX}px`;
     clone.style.maxWidth = `${MOBILE_WIDTH_PX}px`;
@@ -1284,12 +1359,13 @@ var ChatCaptureSession = class {
     clone.style.height = "auto";
     clone.style.maxHeight = "none";
     clone.style.overflow = "visible";
-  clone.style.padding = "6px"; 
+    clone.style.padding = "6px";
     clone.style.margin = "0";
     return clone;
   }
-  async applyMessageStyling(clone) {
+  async applyMessageStyling(clone, onProgress) {
     const msgEls = Array.from(clone.querySelectorAll(MSG_SELECTOR));
+    const total = msgEls.length;
 
     for (const msgEl of msgEls) {
       msgEl.classList.remove("ggai-snap-endpoint", "ggai-snap-in-range");
@@ -1325,9 +1401,7 @@ var ChatCaptureSession = class {
     }
 
     if (this.settings.nameMode === "replace" && this.settings.nameReplacements) {
-      const entries = Object.entries(this.settings.nameReplacements).filter(
-        ([, value]) => value && value.trim()
-      );
+      const entries = Object.entries(this.settings.nameReplacements).filter(([, value]) => value && value.trim());
       if (entries.length > 0) {
         for (const msgEl of msgEls) {
           const bubbleEl = msgEl.querySelector(".ggai-chat-bubble");
@@ -1336,15 +1410,21 @@ var ChatCaptureSession = class {
       }
     }
 
-    for (const msgEl of msgEls) {
+    for (let i = 0; i < msgEls.length; i += 1) {
+      const msgEl = msgEls[i];
       const bubbleEl = msgEl.querySelector(".ggai-chat-bubble");
-      if (!bubbleEl) continue;
-      const paras = bubbleEl.querySelectorAll("p.ggai-chat-para");
-      for (const p of paras) {
-        const w = p.getBoundingClientRect().width;
-        if (w > 0) {
-          p.style.width = `${Math.ceil(w)}px`;
+      if (bubbleEl) {
+        const paras = bubbleEl.querySelectorAll("p.ggai-chat-para");
+        for (const p of paras) {
+          const w = p.getBoundingClientRect().width;
+          if (w > 0) {
+            p.style.width = `${Math.ceil(w)}px`;
+          }
         }
+      }
+      if (onProgress) onProgress(i + 1, total);
+      if ((i + 1) % 3 === 0) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
       }
     }
   }
@@ -1352,7 +1432,7 @@ var ChatCaptureSession = class {
     const walker = document.createTreeWalker(bubbleEl, NodeFilter.SHOW_TEXT);
     const textNodes = [];
     let node;
-    while (node = walker.nextNode()) textNodes.push(node);
+    while ((node = walker.nextNode())) textNodes.push(node);
     for (const textNode of textNodes) {
       let text = textNode.nodeValue;
       let changed = false;
@@ -1403,7 +1483,9 @@ var ChatCaptureSession = class {
         el.classList.remove("ggai-snap-endpoint", "ggai-snap-in-range");
         void el.offsetHeight;
       }
-      const clone = this.buildMobileClone(rangeEls);
+      const clone = await this.buildMobileClone(rangeEls, (done, total) => {
+        if (this.statusEl) this.statusEl.setText(`메시지 복제 중... (${done}/${total})`);
+      });
       for (const el of this.getOrderedMessageEls()) {
         el.style.transition = "";
       }
@@ -1414,15 +1496,23 @@ var ChatCaptureSession = class {
       wrapper.style.left = "-99999px";
       wrapper.style.pointerEvents = "none";
       wrapper.appendChild(clone);
-      await this.applyMessageStyling(clone);
+      await this.applyMessageStyling(clone, (done, total) => {
+        if (this.statusEl) this.statusEl.setText(`스타일 적용 중... (${done}/${total})`);
+      });
+      if (this.statusEl) this.statusEl.setText("이미지 인코딩 중...");
       const bg = getComputedStyle(document.body).getPropertyValue("--background-primary").trim() || "#ffffff";
-      const blob = await toBlob(clone, {
+      const format = this.settings.imageFormat === "jpg" ? "jpg" : "png";
+      const blobOptions = {
         backgroundColor: bg,
         pixelRatio: 2,
-        cacheBust: true
-      });
+        cacheBust: true,
+        type: IMAGE_FORMAT_MIME[format],
+      };
+      if (format === "jpg") blobOptions.quality = JPEG_QUALITY;
+      const blob = await toBlob(clone, blobOptions);
       if (!blob) throw new Error("이미지 인코딩 실패");
-      const savedPath = await saveImageToVault(this.app, this.sessionFile, blob);
+      if (this.statusEl) this.statusEl.setText("저장 중...");
+      const savedPath = await saveImageToVault(this.app, this.sessionFile, blob, IMAGE_FORMAT_EXTENSIONS[format]);
       new import_obsidian3.Notice(`캡쳐본을 저장했습니다:
 ${savedPath}`);
       this.cleanup();
@@ -1443,6 +1533,7 @@ ${savedPath}`);
       this.container.removeEventListener("click", this.boundClick, true);
       for (const el of this.getOrderedMessageEls()) {
         el.classList.remove("ggai-snap-endpoint", "ggai-snap-in-range");
+        el.style.opacity = "";
       }
     }
     (_a = this.toolbarEl) == null ? void 0 : _a.remove();
@@ -1450,25 +1541,35 @@ ${savedPath}`);
   }
 };
 
+var IMAGE_FORMAT_EXTENSIONS = {
+  png: "png",
+  jpg: "jpg",
+};
+var IMAGE_FORMAT_MIME = {
+  png: "image/png",
+  jpg: "image/jpeg",
+};
+var JPEG_QUALITY = 0.92;
 
 var DEFAULT_CAPTURE_SETTINGS = {
   nameMode: "show",
   userAvatarMode: "show",
   characterAvatarMode: "show",
-  nameReplacements: {}
+  nameReplacements: {},
+  imageFormat: "png",
+  maxMessagesPerCapture: 20,
 };
-
 
 var ChatSnapshotPlugin = class extends import_obsidian4.Plugin {
   constructor() {
     super(...arguments);
     this.disposers = [];
-    this.captureSettings = { ...DEFAULT_CAPTURE_SETTINGS };
+    this.captureSettings = {...DEFAULT_CAPTURE_SETTINGS};
     this.activeCapture = null;
   }
   async onload() {
     const saved = await this.loadData();
-    this.captureSettings = { ...DEFAULT_CAPTURE_SETTINGS, ...saved != null ? saved : {} };
+    this.captureSettings = {...DEFAULT_CAPTURE_SETTINGS, ...(saved != null ? saved : {})};
     this.app.workspace.onLayoutReady(() => this.tryRegisterStellaAction());
   }
   tryRegisterStellaAction() {
@@ -1481,11 +1582,11 @@ var ChatSnapshotPlugin = class extends import_obsidian4.Plugin {
           id: "capture",
           title: "캡쳐",
           icon: "camera",
-          run: ({ sessionFile }) => {
+          run: ({sessionFile}) => {
             this.beginCapture(sessionFile);
-          }
-        }
-      ]
+          },
+        },
+      ],
     });
     this.disposers.push(unregister);
   }
