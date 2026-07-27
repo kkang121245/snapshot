@@ -80,7 +80,7 @@ var CaptureOptionsModal = class extends import_obsidian.Modal {
       });
     new import_obsidian.Setting(contentEl)
       .setName("이미지 형식")
-      .setDesc("PNG는 화질이 좋은 대신 용량이 크고, JPG는 화질 저하가 있는 대신 용량이 작습니다.")
+      .setDesc("PNG는 화질이 좋고, JPG는 용량이 작습니다.")
       .addDropdown((dropdown) => {
         dropdown
           .addOption("png", "PNG")
@@ -91,8 +91,8 @@ var CaptureOptionsModal = class extends import_obsidian.Modal {
           });
       });
     new import_obsidian.Setting(contentEl)
-      .setName("최대 캡쳐 메시지 수")
-      .setDesc("한 번에 캡쳐할 수 있는 메시지 개수를 제한합니다.")
+      .setName("이미지당 최대 메시지 수")
+      .setDesc("선택한 범위가 이 개수보다 길면 여러 장의 이미지로 나눠 저장합니다.")
       .addSlider((slider) => {
         slider
           .setLimits(5, 50, 5)
@@ -1102,6 +1102,24 @@ function timestamp() {
   const d = new Date();
   return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
 }
+function splitRangeEls(rangeEls, maxMessages) {
+  if (!maxMessages || maxMessages <= 0) return [rangeEls];
+  const chunks = [];
+  let current = [];
+  let msgCount = 0;
+  for (const el of rangeEls) {
+    const isMsg = el.classList.contains("ggai-chat-msg");
+    if (isMsg && msgCount >= maxMessages) {
+      chunks.push(current);
+      current = [];
+      msgCount = 0;
+    }
+    current.push(el);
+    if (isMsg) msgCount += 1;
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+}
 function ensureImageLoaded(img, timeoutMs = 1500) {
   if (img.complete && (img.naturalWidth || img.width)) return Promise.resolve(img);
   return new Promise((resolve) => {
@@ -1120,7 +1138,7 @@ function ensureImageLoaded(img, timeoutMs = 1500) {
     setTimeout(() => finish(img.naturalWidth || img.width ? img : null), timeoutMs);
   });
 }
-async function saveImageToVault(app, sessionFile, blob, extension = "png") {
+async function saveImageToVault(app, sessionFile, blob, extension = "png", ts, suffix = "") {
   const normalized = sessionFile.replace(/\\/g, "/");
   const parts = normalized.split("/").filter(Boolean);
   parts.pop();
@@ -1139,13 +1157,13 @@ async function saveImageToVault(app, sessionFile, blob, extension = "png") {
     await app.vault.createFolder(folder);
   }
 
-  const ts = timestamp();
-  let filename = `${sessionName}_${ts}.${extension}`;
+  const usedTs = ts || timestamp();
+  let filename = `${sessionName}_${usedTs}${suffix}.${extension}`;
   let fullPath = `${folder}/${filename}`;
   let counter = 1;
   while (await app.vault.adapter.exists(fullPath)) {
     counter += 1;
-    filename = `${sessionName}_${ts}_${counter}.${extension}`;
+    filename = `${sessionName}_${usedTs}${suffix}_${counter}.${extension}`;
     fullPath = `${folder}/${filename}`;
   }
   const buf = await blob.arrayBuffer();
@@ -1219,27 +1237,13 @@ var ChatCaptureSession = class {
     if (!this.startId) {
       this.startId = nodeId;
     } else if (!this.endId) {
-      this.endId = this.clampToMaxRange(this.startId, nodeId);
+      this.endId = nodeId;
     } else {
       this.startId = nodeId;
       this.endId = null;
     }
     this.applyHighlight();
     this.updateStatus();
-  }
-  clampToMaxRange(startId, candidateId) {
-    const max = this.settings.maxMessagesPerCapture > 0 ? this.settings.maxMessagesPerCapture : 20;
-    const msgEls = this.getOrderedMessageEls();
-    const startIdx = msgEls.findIndex((el) => el.dataset.nodeId === startId);
-    const candidateIdx = msgEls.findIndex((el) => el.dataset.nodeId === candidateId);
-    if (startIdx < 0 || candidateIdx < 0) return candidateId;
-    const count = Math.abs(candidateIdx - startIdx) + 1;
-    if (count <= max) return candidateId;
-    const clampedIdx = candidateIdx > startIdx ? startIdx + max - 1 : startIdx - (max - 1);
-    const clampedEl = msgEls[clampedIdx];
-    if (!clampedEl) return candidateId;
-    new import_obsidian3.Notice(`최대 ${max}개 메시지까지 선택할 수 있습니다.`);
-    return clampedEl.dataset.nodeId;
   }
   getOrderedMessageEls() {
     if (!this.container) return [];
@@ -1300,17 +1304,6 @@ var ChatCaptureSession = class {
     for (const el of msgEls) {
       el.classList.remove("ggai-snap-endpoint", "ggai-snap-in-range");
       el.style.opacity = "";
-    }
-    const max = this.settings.maxMessagesPerCapture > 0 ? this.settings.maxMessagesPerCapture : 20;
-    if (this.startId && !this.endId) {
-      const startIdx = msgEls.findIndex((el) => el.dataset.nodeId === this.startId);
-      if (startIdx >= 0) {
-        for (let i = 0; i < msgEls.length; i += 1) {
-          if (Math.abs(i - startIdx) > max - 1) {
-            msgEls[i].style.opacity = "0.35";
-          }
-        }
-      }
     }
     const range = this.getSelectedRange();
     if (!range) return;
@@ -1470,7 +1463,7 @@ var ChatCaptureSession = class {
     this.capturing = true;
     if (this.captureBtn) this.captureBtn.disabled = true;
     if (this.statusEl) this.statusEl.setText("캡쳐 중...");
-    let wrapper = null;
+    const activeWrappers = [];
     try {
       const allChildren = Array.from(this.container.children);
       const startEl = range.msgEls[range.lo];
@@ -1483,38 +1476,59 @@ var ChatCaptureSession = class {
         el.classList.remove("ggai-snap-endpoint", "ggai-snap-in-range");
         void el.offsetHeight;
       }
-      const clone = await this.buildMobileClone(rangeEls, (done, total) => {
-        if (this.statusEl) this.statusEl.setText(`메시지 복제 중... (${done}/${total})`);
-      });
+      const maxMessages = this.settings.maxMessagesPerCapture > 0 ? this.settings.maxMessagesPerCapture : 20;
+      const chunks = splitRangeEls(rangeEls, maxMessages);
       for (const el of this.getOrderedMessageEls()) {
         el.style.transition = "";
       }
       this.applyHighlight();
-      wrapper = document.body.createDiv();
-      wrapper.style.position = "fixed";
-      wrapper.style.top = "0";
-      wrapper.style.left = "-99999px";
-      wrapper.style.pointerEvents = "none";
-      wrapper.appendChild(clone);
-      await this.applyMessageStyling(clone, (done, total) => {
-        if (this.statusEl) this.statusEl.setText(`스타일 적용 중... (${done}/${total})`);
-      });
-      if (this.statusEl) this.statusEl.setText("이미지 인코딩 중...");
+
       const bg = getComputedStyle(document.body).getPropertyValue("--background-primary").trim() || "#ffffff";
       const format = this.settings.imageFormat === "jpg" ? "jpg" : "png";
-      const blobOptions = {
-        backgroundColor: bg,
-        pixelRatio: 2,
-        cacheBust: true,
-        type: IMAGE_FORMAT_MIME[format],
-      };
-      if (format === "jpg") blobOptions.quality = JPEG_QUALITY;
-      const blob = await toBlob(clone, blobOptions);
-      if (!blob) throw new Error("이미지 인코딩 실패");
-      if (this.statusEl) this.statusEl.setText("저장 중...");
-      const savedPath = await saveImageToVault(this.app, this.sessionFile, blob, IMAGE_FORMAT_EXTENSIONS[format]);
-      new import_obsidian3.Notice(`캡쳐본을 저장했습니다:
-${savedPath}`);
+      const ts = timestamp();
+      const savedPaths = [];
+
+      for (let c = 0; c < chunks.length; c += 1) {
+        const chunkEls = chunks[c];
+        const label = chunks.length > 1 ? `이미지 ${c + 1}/${chunks.length} ` : "";
+        const clone = await this.buildMobileClone(chunkEls, (done, total) => {
+          if (this.statusEl) this.statusEl.setText(`${label}복제 중... (${done}/${total})`);
+        });
+        const wrapper = document.body.createDiv();
+        wrapper.style.position = "fixed";
+        wrapper.style.top = "0";
+        wrapper.style.left = "-99999px";
+        wrapper.style.pointerEvents = "none";
+        wrapper.appendChild(clone);
+        activeWrappers.push(wrapper);
+        await this.applyMessageStyling(clone, (done, total) => {
+          if (this.statusEl) this.statusEl.setText(`${label}스타일 적용 중... (${done}/${total})`);
+        });
+        if (this.statusEl) this.statusEl.setText(`${label}인코딩 중...`);
+        const blobOptions = {
+          backgroundColor: bg,
+          pixelRatio: 2,
+          cacheBust: true,
+          type: IMAGE_FORMAT_MIME[format],
+        };
+        if (format === "jpg") blobOptions.quality = JPEG_QUALITY;
+        const blob = await toBlob(clone, blobOptions);
+        if (!blob) throw new Error("이미지 인코딩 실패");
+        if (this.statusEl) this.statusEl.setText(`${label}저장 중...`);
+        const suffix = chunks.length > 1 ? `_part${c + 1}` : "";
+        const savedPath = await saveImageToVault(this.app, this.sessionFile, blob, IMAGE_FORMAT_EXTENSIONS[format], ts, suffix);
+        savedPaths.push(savedPath);
+        wrapper.remove();
+        activeWrappers.pop();
+      }
+
+      const message =
+        savedPaths.length > 1 ?
+          `캡쳐본을 ${savedPaths.length}장으로 나눠 저장했습니다:
+${savedPaths.join("\n")}`
+        : `캡쳐본을 저장했습니다:
+${savedPaths[0]}`;
+      new import_obsidian3.Notice(message);
       this.cleanup();
     } catch (err) {
       new import_obsidian3.Notice(`캡쳐에 실패했습니다: ${err.message}`);
@@ -1522,7 +1536,7 @@ ${savedPath}`);
       if (this.captureBtn) this.captureBtn.disabled = false;
       if (this.statusEl) this.statusEl.setText("준비 완료");
     } finally {
-      wrapper == null ? void 0 : wrapper.remove();
+      for (const wrapper of activeWrappers) wrapper.remove();
     }
   }
   cleanup() {
